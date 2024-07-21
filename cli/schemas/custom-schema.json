@@ -1,0 +1,65 @@
+{
+	"type": "object",
+	"properties": {
+		"kind": {
+			"type": "string",
+			"maxLength": 32
+		  },
+		  "name": {
+			"type": "string",
+			"maxLength": 128
+		  },
+		  "version": {
+			"type": "string",
+			"pattern": "^(?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)(?:-(?P<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+		  },
+		  "description": {
+			"type": "string",
+			"maxLength": 4096
+		  },
+		"list":{
+			"type": "array",
+			"items": {
+			  "type": "number"
+			}
+		},
+		"list_objects":{
+			"type": "array",
+			"items":{
+				"type": "object",
+				"properties": {
+					"field1": {
+						"type": "number"
+					},
+					"field2": {
+						"type": "boolean"
+					}
+				}
+			}
+		},
+		"configuration": {
+			"type": "object",
+			"properties": {
+				"specification": {
+					"type": "object",
+					"properties": {
+						"spec1": {
+							"type": ["number", "string"]
+						}
+					}
+				},
+				"settings": {
+					"type": "object",
+					"properties": {
+						"sett1": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"required": ["specification"]
+		}
+
+	},
+	"required": ["kind", "name", "version", "description", "configuration"]
+}

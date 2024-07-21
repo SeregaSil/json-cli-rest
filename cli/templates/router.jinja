@@ -1,0 +1,132 @@
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List
+from uuid import UUID
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from copy import deepcopy
+from rest.database import get_session
+from rest.db_model import Apps, Status
+from rest.models.{{ model_name|lower }} import *
+
+router = APIRouter(
+    prefix = '/{{ model_name|lower }}',
+    tags=['{{ model_name }}']
+)
+
+@router.post('')
+def create_{{ model_name|lower }}({{ model_name|lower }}: {{ model_name }}, db: Session = Depends(get_session)):
+    try:
+        if {{ model_name|lower }}.kind != '{{ model_name|lower }}':
+            raise HTTPException(status_code=400, detail='Неверный тип документа (kind)')
+
+        app = Apps(
+            kind={{ model_name|lower }}.kind,
+            name={{ model_name|lower }}.name,
+            version={{ model_name|lower }}.version,
+            description={{ model_name|lower }}.description,
+            state=Status.NEW,
+            json={{ model_name|lower }}.dict()
+        )
+        db.add(app)
+        db.commit()
+    
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return {'status': 'success'}
+
+
+@router.get('/{uuid}')
+def get_by_uuid(uuid: UUID, db: Session = Depends(get_session)):
+    try:
+        app = db.get(Apps, uuid)
+        if not app:
+            raise HTTPException(status_code=404, detail='Объект не найден')
+    
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {'data': app}
+
+
+@router.get('/{uuid}/state')
+def get_state(uuid: UUID, db: Session = Depends(get_session)):
+    try:
+        app = db.get(Apps, uuid)
+        if not app:
+            raise HTTPException(status_code=404, detail='Объект не найден')
+    
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {'state': app.state}
+
+
+@router.delete('/{uuid}')
+def delete_{{ model_name|lower }}(uuid: UUID, db: Session = Depends(get_session)):
+    try:
+        app = db.get(Apps, uuid)
+        if not app:
+            raise HTTPException(status_code=404, detail='Объект не найден')
+
+        db.delete(app)
+        db.commit()
+
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {'status': 'success'}
+
+
+@router.put('/{uuid}/state')
+def update_state(uuid: UUID, state: Status, db: Session = Depends(get_session)):
+    try:
+        app = db.get(Apps, uuid)
+        if not app:
+            raise HTTPException(status_code=404, detail='Объект не найден')
+
+        app.state = state
+        db.commit()
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {'status': 'success'}
+{% set start = nested_tree[model_name] -%}
+{% set start_path = '/' -%}
+{% macro router(tree, path) -%}
+    {% for classtype, nested_classes in tree.items() -%}
+        {% if classtype[:5] == 'List[' -%}
+            {% set classname = classtype[5:-1] -%}
+        {% else -%}
+            {% set classname = classtype -%}
+        {% endif %}
+@router.put('/{uuid}{{path}}{{classname|lower}}')
+def update_{{classname|lower}}(uuid: UUID, {{classname|lower}}: {{classtype}}, db: Session = Depends(get_session)):
+    try:
+        app = db.get(Apps, uuid)
+        if not app:
+            raise HTTPException(status_code=404, detail='Объект не найден')
+        
+        data = deepcopy(app.json)
+        data
+        {%- for i in path.strip('/').split('/') -%} 
+            {% if i != '' -%} ['{{i|lower}}'] {%- endif %} 
+        {%- endfor -%} ['{{classname|lower}}'] = {{classname|lower}}.dict()
+        app.json = data
+
+        db.commit()
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {'status': 'success'}
+
+        {% if tree.get(classname) -%}
+            {{router(tree.get(classname), start_path + classname|lower + '/')-}}
+        {% endif -%} 
+    {% endfor -%}
+{% endmacro %}
+{{router(start, start_path)}}

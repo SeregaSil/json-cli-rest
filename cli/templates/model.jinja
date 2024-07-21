@@ -1,0 +1,68 @@
+from pydantic import BaseModel, Field
+from typing import List, Any
+
+{%- macro get_python_field_options(fieldoptions) -%}
+    {% if fieldoptions.maxLength -%}
+        max_lenght={{fieldoptions.maxLength}},
+    {%- endif -%}
+    {% if fieldoptions.pattern -%}
+        pattern=r'{{fieldoptions.pattern}}',
+    {%- endif -%}
+{%- endmacro -%}
+
+{% macro get_python_type(fieldoptions, is_required) -%}
+    {% if fieldoptions is string -%}
+        {% set schema_type = fieldoptions -%}
+    {% else -%}
+        {% set schema_type = fieldoptions.type -%}
+    {% endif -%}
+    {% if schema_type is not string -%}
+        {% for t in schema_type -%}
+            {{ get_python_type(t, is_required) }} {%- if not loop.last %} | {% endif -%}
+        {%- endfor -%}
+    {% else -%}
+        {%- if schema_type == 'string' -%} str 
+        {%- elif schema_type == 'number' -%} float
+        {%- elif schema_type == 'array' -%} List[{{- get_python_type(fieldoptions['items'].type, is_required) -}}]
+        {%- elif schema_type == 'boolean' -%} bool
+        {%- elif schema_type == 'integer' -%} int
+        {%- elif schema_type == 'null' -%} None
+        {%- else -%} Any
+        {%- endif -%}
+    {%- endif -%}
+        {%- if fieldoptions is not string -%}
+            {%- if not is_required %} | None {%- endif -%} 
+        = Field(
+            {%- if not is_required -%} default=None, {%- else -%} ..., {%- endif -%}
+            {{ get_python_field_options(fieldoptions) -}})
+        {%- endif -%}
+{% endmacro -%}
+
+{% macro generate_code(model_object, classname) -%}
+    {% for fieldname, fieldoptions in model_object.properties.items() -%}
+        {% if fieldoptions.type == 'object' -%}
+            {{ generate_code(fieldoptions, fieldname|capitalize) -}}
+        {% elif fieldoptions.type == 'array' and fieldoptions['items'].type == 'object' -%}
+            {{ generate_code(fieldoptions['items'], fieldname|capitalize) -}}
+        {% endif -%}
+    {% endfor %}
+class {{ classname }}(BaseModel):
+    {% for fieldname, fieldoptions in model_object.properties.items() -%}
+        {% if fieldname in model_object.required -%}
+            {% set is_required = True -%}
+        {% else -%}
+            {% set is_required = False -%}
+        {% endif -%}
+    {% if fieldoptions.type == 'object' -%}
+        {{ fieldname }}: {{ fieldname|capitalize }} {%- if not is_required %} | None = Field(default=None) {% else %} = Field(...,) {%- endif %} 
+    {% elif fieldoptions.type == 'array' and fieldoptions['items'].type == 'object' -%}
+        {{ fieldname }}: List[{{ fieldname|capitalize }}] {%- if not is_required %} | None = Field(default=None) {% else %} = Field(...,) {%- endif %} 
+    {% else -%}
+        {% if fieldoptions.type is defined -%}
+            {{ fieldname }}: {{ get_python_type(fieldoptions, is_required) }}
+        {%- endif %}
+    {% endif -%}
+    {% endfor %}
+{% endmacro %}
+
+{{ generate_code(data, model_name|capitalize) }}

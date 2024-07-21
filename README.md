@@ -23,21 +23,21 @@ alembic upgrade head
 python cli/cli.py gen-model --json-schema=<файл json-схемы>
 ```
 Опции:
-- *\-\-out-dir/-o* --- директория, в которую будет сохранена Pydantic модель (по умолчанию: ./rest/models)
-- *\-\-name* --- задать место модели
+- *\-\-out-dir/-o* — директория, в которую будет сохранена Pydantic модель (по умолчанию: ./rest/models)
+- *\-\-name* — задать место модели
 - ### Генерация REST API контроллеров на основе Pydantic модели
 ```bash
 python cli/cli.py gen-rest
 ```
 Опции:
-- *\-\-models/-m* --- директория c Pydantic моделями (по умолчанию: ./rest/models))
-- *\-\-rest-routers/-r* --- директория, в которую будут сохранены REST API контроллеры (по умолчанию: ./rest/routers)
+- *\-\-models/-m* — директория c Pydantic моделями (по умолчанию: ./rest/models))
+- *\-\-rest-routers/-r* — директория, в которую будут сохранены REST API контроллеры (по умолчанию: ./rest/routers)
 - ### Фиксирование изменений в git и добавление git tag
 ```bash
 python cli/cli.py save <версия>
 ```
 Опции:
-- *\-\-message/-m* --- описание git commit (по умолчанию: '')
+- *\-\-message/-m* — описание git commit (по умолчанию: '')
 ## REST API
 Для запуска сервера:
 ```bash
